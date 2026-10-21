@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#050108">
+<title>LOVE.exe ♥</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050108;color:#fff;font-family:Arial,sans-serif}
+body{min-height:100dvh}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
+.overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 28px) 18px calc(env(safe-area-inset-bottom) + 22px)}
+.top{text-align:center;letter-spacing:5px;font-size:10px;color:#f9a4c3;opacity:.6}
+.top strong{display:block;margin-top:10px;font-size:clamp(21px,6vw,30px);letter-spacing:8px;color:#fff;text-shadow:0 0 20px #ff176a}
+.bottom{text-align:center}
+.bottom p{font-size:10px;letter-spacing:3px;color:#bd7898;opacity:.65}
+#start{pointer-events:auto;border:1px solid #ff477e66;border-radius:99px;padding:14px 25px;background:#180612b8;color:#ffd6e5;letter-spacing:3px;font-size:10px;box-shadow:0 0 30px #ff174522;cursor:pointer;backdrop-filter:blur(10px)}
+#start:active{transform:scale(.96)}
+#secret{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);white-space:nowrap;color:rgba(116,4,35,.28);font-size:clamp(11px,3.5vw,16px);letter-spacing:clamp(3px,1.2vw,6px);text-shadow:0 0 1px #420014;pointer-events:none;transition:color 1.5s}
+#secret small{display:block;text-align:center;margin-top:13px;font-size:20px;letter-spacing:0}
+#toast{position:absolute;top:58%;width:100%;text-align:center;font-size:10px;letter-spacing:3px;color:#ff9bbb;opacity:0;transition:opacity 1s;pointer-events:none}
+#toast.show{opacity:.7}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="secret">I LOVE YOU<small>♥</small></div>
+<div class="overlay">
+  <div class="top">A LITTLE UNIVERSE<strong>FOR YOU</strong></div>
+  <div class="bottom">
+    <button id="start">TOUCH MY HEART ♥</button>
+    <p>MADE OF STARS & FEELINGS</p>
+  </div>
+</div>
+<div id="toast">YOU ARE MY FAVORITE UNIVERSE</div>
+<script>
+(() => {
+const canvas=document.querySelector("#c"),ctx=canvas.getContext("2d");
+const secret=document.querySelector("#secret");
+const toast=document.querySelector("#toast");
+let W,H,D,cx,cy,S,start=performance.now(),active=false,bursts=[],dust=[],petals=[];
+const rand=(a,b)=>a+Math.random()*(b-a);
+function size(){
+ D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+ canvas.width=W*D;canvas.height=H*D;
+ ctx.setTransform(D,0,0,D,0,0);
+ cx=W/2;cy=H*.465;S=Math.min(W/37,H/45);
+}
+function heart(t){
+ return {x:16*Math.sin(t)**3,y:-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))};
+}
+function hp(t,k=1){
+ let p=heart(t);
+ return {x:cx+p.x*S*k,y:cy+p.y*S*k};
+}
+for(let i=0;i<260;i++)dust.push({x:Math.random(),y:Math.random(),r:rand(.3,1.4),a:rand(.08,.65),p:rand(0,7)});
+for(let i=0;i<22;i++)petals.push({x:Math.random(),y:Math.random(),s:rand(2,5),v:rand(.00012,.0005),r:rand(0,7)});
+function burst(x,y){
+ for(let i=0;i<65;i++){
+ let a=rand(0,Math.PI*2),v=rand(.5,4);
+ bursts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,r:rand(.6,2.5)});
+ }
+}
+function linePath(progress,now){
+ const total=480,n=Math.floor(total*progress);
+ ctx.lineCap="round";ctx.lineJoin="round";
+ for(let layer=0;layer<3;layer++){
+ ctx.beginPath();
+ for(let i=0;i<=n;i++){
+ let t=i/total*Math.PI*2,p=hp(t,1+Math.sin(now/500)*.012);
+ if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+ }
+ ctx.strokeStyle=["#ff174422","#ff245c77","#ffb0d0"][layer];
+ ctx.lineWidth=[13,4,1][layer];ctx.shadowColor="#ff174d";
+ ctx.shadowBlur=[27,17,8][layer];ctx.stroke();
+ }
+}
+function frame(now){
+ ctx.clearRect(0,0,W,H);
+ let elapsed=(now-start)/1000,progress=Math.min(elapsed/6,1);
+ const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*.7);
+ bg.addColorStop(0,"#190512");bg.addColorStop(.55,"#09030c");bg.addColorStop(1,"#030207");
+ ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ // distant stars
+ for(const p of dust){
+ let a=p.a*(.35+.65*(.5+.5*Math.sin(now*.0015+p.p)));
+ ctx.fillStyle=`rgba(255,130,180,${a})`;
+ ctx.beginPath();ctx.arc(p.x*W,p.y*H,p.r,0,7);ctx.fill();
+ }
+ // drifting rose petals
+ for(const p of petals){
+ p.y+=p.v*H;
+ if(p.y>1.05){p.y=-.05;p.x=Math.random()}
+ ctx.save();ctx.translate(p.x*W,p.y*H);ctx.rotate(now*.0002+p.r);
+ ctx.fillStyle="#ff397755";ctx.shadowColor="#ff174d";ctx.shadowBlur=12;
+ ctx.beginPath();ctx.ellipse(0,0,p.s,p.s*.48,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+ // slowly appearing neon heart
+ linePath(progress,now);
+ // moving spark on the heart
+ if(progress>.15){
+ let p=hp((now*.00035)%(Math.PI*2));
+ const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,20);
+ g.addColorStop(0,"#fff");g.addColorStop(.15,"#ffb5d3");g.addColorStop(1,"#ff174d00");
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,20,0,7);ctx.fill();
+ }
+ // interactive particles
+ bursts=bursts.filter(p=>p.life>0);
+ for(const p of bursts){
+ p.x+=p.vx;p.y+=p.vy;p.vx*=.985;p.vy*=.985;p.life-=.014;
+ ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle="#ff9dc5";ctx.shadowColor="#ff174d";ctx.shadowBlur=10;
+ ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();
+ }
+ ctx.globalAlpha=1;ctx.shadowBlur=0;
+ requestAnimationFrame(frame);
+}
+function touch(e){
+ const rect=canvas.getBoundingClientRect();
+ burst(e.clientX-rect.left,e.clientY-rect.top);
+}
+canvas.addEventListener("pointerdown",touch);
+document.querySelector("#start").addEventListener("click",()=>{
+ active=true;burst(cx,cy);
+ toast.classList.add("show");
+ secret.style.color="rgba(130,5,38,.34)";
+ setTimeout(()=>toast.classList.remove("show"),3000);
+});
+addEventListener("resize",size);
+size();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
